@@ -1,4 +1,4 @@
-import { Plugin } from "@highlite/core";
+import { Plugin, UIManagerScope } from "@highlite/core";
 import { UIManager } from "@highlite/core";
 import { SoundManager } from "@highlite/core";
 
@@ -301,6 +301,12 @@ export default class SpellSound extends Plugin {
 
     private soundManager = new SoundManager();
     private uiManager = new UIManager();
+
+    /**
+     * The parent/master "DIV" to which all UI elements of this plugin are added as children
+     *  in the DOM hierarchy.
+     */
+    private masterDiv : HTMLElement | null = null;
     private isAutoplayEnabled: boolean = true;
     private musicPlayerWindow: HTMLDivElement | null = null;
     private currentSong: HTMLAudioElement | null = null;
@@ -308,7 +314,7 @@ export default class SpellSound extends Plugin {
     // Stores the currentSong's id (index) in the 'songs' array, from
     //  which further metadata can be retrieved.
     private currentSongId: number = 0;
-    private musicButton : HTMLButtonElement | null = null;
+    private musicButton : HTMLElement | null = null;
     private musicInfoContainer: HTMLDivElement | null = null;
     private currentSongNameLabel : HTMLDivElement | null = null;
     private currentSongAuthorLabel : HTMLDivElement | null = null;
@@ -813,6 +819,7 @@ export default class SpellSound extends Plugin {
 
         this.logToPlugin('Starting Spell Sound...', LogLevel.Important);
         
+        this.createMasterDiv();
         this.createMusicButton();
         this.createMusicPanel('hidden');
 
@@ -831,18 +838,31 @@ export default class SpellSound extends Plugin {
         this.logToPlugin('Spell Sound started.', LogLevel.Important);
     }
     
+    createMasterDiv() {
+        this.masterDiv
+            = this.uiManager.createElement(
+                UIManagerScope.ClientInternal
+            );
+    }
+    
     createMusicButton() {
         this.logToPlugin(`\t--> Entering function ${this.createMusicButton.name}`);
 
         this.musicButton
             = this.createSimpleButton();
 
-        this.musicButton.style.backgroundImage = `url(${icon_musicPlayer})`;
-        this.musicButton.style.padding = '0px';
+        this.musicButton.innerHTML = '♫';
+        this.musicButton.style.fontSize = '42px';
+        this.musicButton.style.fontWeight = 'bold';
+        this.musicButton.style.textAlign = 'center';
+        this.musicButton.style.color = '#F9F449';
+        this.musicButton.classList.add('hs-menu', 'hs-game-menu');
         this.musicButton.style.width = '50px';
         this.musicButton.style.height = '50px';
-        this.musicButton.style.right = '395px';
+        this.musicButton.style.right = '363px';
         this.musicButton.style.bottom = '7px';
+        // Reset the padding because the inherited padding is messing the UI up.
+        this.musicButton.style.padding = '0px';
         this.musicButton.style.backgroundSize = 'cover';
         this.musicButton.style.transition = 'filter 0.3s'; // Smooth transition for hover effect
 
@@ -854,7 +874,7 @@ export default class SpellSound extends Plugin {
             this.musicButton!.style.filter = 'brightness(1)'; // Reset to normal brightness
         };
 
-        this.musicButton.onclick = () => {
+        document.highlite.managers.UIManager.bindOnClickBlockHsMask(this.musicButton, () => {
             if (this.musicPlayerWindow) {
                 let currentVisibility = this.musicPlayerWindow.style.visibility;
                 switch (currentVisibility) {
@@ -878,7 +898,7 @@ export default class SpellSound extends Plugin {
             } else {
                 this.createMusicPanel();
             }
-        }
+        });
 
         this.logToPlugin(`\t<-- Exiting function ${this.createMusicButton.name}`);
     }
@@ -913,14 +933,14 @@ export default class SpellSound extends Plugin {
         
         // Remove the music button from the document body
         try {
-            document.body.removeChild(this.musicButton!);
+            this.masterDiv!.removeChild(this.musicButton!);
         } catch (e) {
             this.error('Error removing music button:', e);
         }
 
         if (this.musicPlayerWindow) {
             try {
-                document.body.removeChild(this.musicPlayerWindow);
+                this.masterDiv!.removeChild(this.musicPlayerWindow);
             } catch (e) {
                 this.error('Error removing music player window:', e);
             }
@@ -946,21 +966,32 @@ export default class SpellSound extends Plugin {
      * Creates a simple button that can be clicked, adds it to the document body,
      *  and returns the button element.
      */
-    createSimpleButton(): HTMLButtonElement {
+    createSimpleButton(): HTMLElement {
         // Create the button element
         const button = document.createElement('button');
         button.style.position = 'absolute';
         button.style.bottom = '20px';
         button.style.right = '20px';
         button.style.padding = '10px 20px';
-        button.style.backgroundColor = '#007BFF';
-        button.style.color = '#FFFFFF';
         button.style.border = 'none';
         button.style.borderRadius = '5px';
         button.style.zIndex = '1000';
 
-        // Append the button to the document body
-        document.body.appendChild(button);
+        //const spanIcon = document.createElement("i");
+        //spanIcon.className = "iconify";
+        //spanIcon.setAttribute(
+        //    "data-icon",
+        //    "material-symbols:mdi:music"
+        //);
+        //spanIcon.style.color = '#F9F449';
+        //spanIcon.ariaHidden = "true";
+        //spanIcon.style.marginRight = "10px";
+        //spanIcon.style.width = '32px';
+        //spanIcon.style.height = '32px';
+        //spanIcon.style.visibility = 'visible';
+
+        // Append the button to our parent DIV
+        this.masterDiv!.appendChild(button);
 
         return button;
     }
@@ -1069,9 +1100,9 @@ export default class SpellSound extends Plugin {
             songItem.style.padding = '5px';
             songItem.style.borderBottom = '1px solid #ccc';
             songItem.style.color = 'green';
-            songItem.onclick = () => {
+            document.highlite.managers.UIManager.bindOnClickBlockHsMask(songItem, () => {
                 this.playSong(index);
-            };
+            });
             songItem.onmouseover = () => {
                 songItem.style.backgroundColor = '#444'; // Darken the background on hover
             };
@@ -1082,7 +1113,7 @@ export default class SpellSound extends Plugin {
         });
         songListContainer.appendChild(songList);
 
-        document.body.appendChild(this.musicPlayerWindow);
+        this.masterDiv!.appendChild(this.musicPlayerWindow);
         this.logToPlugin('Music player panel created successfully');
     }
 
