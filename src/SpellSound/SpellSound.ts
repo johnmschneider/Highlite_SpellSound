@@ -838,6 +838,31 @@ export default class SpellSound extends Plugin {
         this.logToPlugin('Spell Sound started.', LogLevel.Important);
     }
     
+    /**
+     * We need a special version of these functions so that the click does not propagate
+     * to the game itself.
+     */
+    private preventDefault(e: Event) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+    }
+
+    /**
+     * We need a special version of these functions so that the click does not propagate
+     * to the game itself.
+     */
+    bindOnClickBlockHsMask(element: HTMLElement, callback: (e: Event) => void) {
+        element.addEventListener('click', e => {
+            callback(e);
+            this.preventDefault(e);
+        });
+        element.addEventListener('pointerdown', this.preventDefault);
+        element.addEventListener('pointerup', this.preventDefault);
+        element.addEventListener('mousedown', this.preventDefault);
+        element.addEventListener('mouseup', this.preventDefault);
+    }
+
     createMasterDiv() {
         this.masterDiv
             = this.uiManager.createElement(
@@ -874,7 +899,7 @@ export default class SpellSound extends Plugin {
             this.musicButton!.style.filter = 'brightness(1)'; // Reset to normal brightness
         };
 
-        document.highlite.managers.UIManager.bindOnClickBlockHsMask(this.musicButton, () => {
+        this.bindOnClickBlockHsMask(this.musicButton, () => {
             if (this.musicPlayerWindow) {
                 let currentVisibility = this.musicPlayerWindow.style.visibility;
                 switch (currentVisibility) {
@@ -1100,7 +1125,7 @@ export default class SpellSound extends Plugin {
             songItem.style.padding = '5px';
             songItem.style.borderBottom = '1px solid #ccc';
             songItem.style.color = 'green';
-            document.highlite.managers.UIManager.bindOnClickBlockHsMask(songItem, () => {
+            this.bindOnClickBlockHsMask(songItem, () => {
                 this.playSong(index);
             });
             songItem.onmouseover = () => {
